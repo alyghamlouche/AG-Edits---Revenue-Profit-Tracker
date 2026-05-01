@@ -1,40 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AG Edits — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:        #0f0f0f;
+      --card:      #1a1a1a;
+      --border:    #2c2c2c;
+      --text:      #f0f0f0;
+      --muted:     #888888;
+      --accent:    #6c5ff5;
+      --accent-l:  #1e1a3a;
+      --green:     #10b981;
+      --green-l:   #d1fae5;
+      --red:       #ef4444;
+      --red-l:     #fee2e2;
+      --orange:    #f59e0b;
+      --orange-l:  #fef3c7;
+      --blue:      #3b82f6;
+      --blue-l:    #dbeafe;
+    }
 
-Claude finished the response
-You said: I'm looking to create a very simple system but so accurate for my video editing agency AG Edits, the whole idea of the system to keep track of the revenue & pr…
-I'm looking to create a very simple system but so accurate for my video editing agency AG Edits, the whole idea of the system to keep track of the revenue & profits also a dashboard to track payments. The idea is not fully complete so i want your ideas and you can ask me questions to get the idea i have in head now.
+    /* ── RESET ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-Claude responded: Love the concept — a clean, purpose-built tracker for AG Edits makes way more sense than wrestling with generic tools.
+    /* ── SETUP SCREEN ───────────────────────────────────── */
+    #setupScreen {
+      display: none;
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .setup-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.07);
+    }
+    .setup-logo { font-size: 24px; font-weight: 900; margin-bottom: 16px; }
+    .setup-logo .ag { color: var(--accent); }
+    .setup-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .setup-desc { font-size: 12px; color: var(--muted); margin-bottom: 24px; line-height: 1.7; }
+    .setup-step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+    .step-n {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent-l); color: var(--accent);
+      font-size: 10px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-t { font-size: 12px; line-height: 1.6; }
+    .step-t code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 11px; color: var(--accent); font-family: monospace; }
 
-Thought process
-Thought process
-Love the concept — a clean, purpose-built tracker for AG Edits makes way more sense than wrestling with generic tools. Let me ask a few things to get a clearer picture of what you're working with:
+    /* ── LOADING ─────────────────────────────────────────── */
+    #loadingOverlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15,15,15,0.9);
+      z-index: 800;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-txt { font-size: 12px; color: var(--muted); font-weight: 600; }
 
+    /* ── TOASTS ──────────────────────────────────────────── */
+    #toasts {
+      position: fixed; bottom: 20px; right: 20px;
+      z-index: 4000;
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      animation: toastIn 0.2s ease;
+    }
+    .toast-ok  { background: var(--green-l); color: #065f46; border: 1px solid #6ee7b7; }
+    .toast-err { background: var(--red-l);   color: #991b1b; border: 1px solid #fca5a5; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
 
-Loaded tools
-Loaded tools
-How do clients typically pay you?
-Mostly per package so for example a 10 video natch, 15, 16, 20 + etc.
-Who needs to use this system?
-Just me
-What format do you want the system in?
-Web dashboard
-Good, that's really helpful. Packages are a great model to build around. A few more to nail down the specifics:
+    /* ── HEADER ──────────────────────────────────────────── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-size: 19px; font-weight: 900; letter-spacing: -0.4px; }
+    .logo .ag { color: var(--accent); }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
-How do clients typically pay for a package — all upfront or split?
-Mostly 50/50
-What do you want to track on the cost/expense side?
-Editors costs, client price, number of videos taken, and suggest what other things we should keep track on
-What payment statuses do you deal with?
-Paid, Partially paid, Overdue, Upcoming / pending
-Great — I have a solid picture now. Here's what I'm thinking, including some additions I'd recommend:
+    /* ── BUTTONS ─────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none;
+      font-family: inherit;
+      transition: background 0.12s, opacity 0.12s;
+    }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled)  { background: #5a4ee0; }
+    .btn-ghost    { background: var(--card); color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled)    { background: var(--bg); color: var(--text); }
+    .btn-danger   { background: var(--red-l); color: var(--red); border: 1px solid #fca5a5; }
+    .btn-danger:hover:not(:disabled)   { background: #fecaca; }
+    .btn-sm { padding: 4px 9px; font-size: 11px; border-radius: 6px; }
 
-Core data per client/project:
+    /* ── MAIN LAYOUT ─────────────────────────────────────── */
+    .main { padding: 22px 24px; max-width: 1380px; margin: 0 auto; }
 
-Client name, package size (# of videos), package price
-Deposit received + final payment received
-Editor cost for that batch
-Gross profit & profit margin %
-Payment status (Paid / Partially Paid / Overdue / Upcoming)
+    /* ── OVERDUE ALERT ───────────────────────────────────── */
+    .alert {
+      background: var(--red-l);
+      border: 1px solid #fca5a5;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .alert-body .alert-title { font-size: 12px; font-weight: 700; color: #b91c1c; }
+    .alert-body .alert-sub   { font-size: 11px; color: #dc2626; margin-top: 2px; line-height: 1.6; }
+
+    /* ── KPI GRID ────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .kpi-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); font-weight: 700; }
+    .kpi-val { font-size: 23px; font-weight: 800; margin-top: 6px; letter-spacing: -0.5px; }
+    .kpi-note { font-size: 10px; font-weight: 600; margin-top: 4px; }
+    .c-accent  { color: var(--accent); }
+    .c-green   { color: var(--green); }
+    .c-orange  { color: var(--orange); }
+    .c-red     { color: var(--red); }
+    .c-blue    { color: var(--blue); }
+    .c-muted   { color: var(--muted); }
+
+    /* ── CARD ────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 18px;
+    }
+    .card-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── CHART ───────────────────────────────────────────── */
+    .legend { display: flex; gap: 14px; align-items: center; }
+    .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); font-weight: 600; }
+    .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .chart-wrap { height: 230px; }
+
+    /* ── FILTER TABS ─────────────────────────────────────── */
+    .tabs { display: flex; gap: 5px; flex-wrap: wrap; }
+    .tab {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      transition: all 0.12s;
+    }
+    .tab:hover  { border-color: var(--accent); color: var(--accent); }
+    .tab.active { background: var(--accent-l); border-color: var(--accent); color: var(--accent); }
+
+    /* ── TABLE ───────────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th {
+      text-align: left;
+      padding: 9px 12px;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #222222; }
+    tbody td { padding: 11px 12px; vertical-align: middle; }
+
+    /* ── BADGES ──────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 10px; font-weight: 700;
+      white-space: nowrap;
+    }
+    .b-paid     { background: var(--green-l);  color: #065f46; }
+    .b-partial  { background: var(--blue-l);   color: #1e40af; }
+    .b-overdue  { background: var(--red-l);    color: #991b1b; }
+    .b-upcoming { background: var(--orange-l); color: #78350f; }
+    .b-repeat   { background: var(--accent-l); color: var(--accent); font-size: 9px; margin-left: 5px; }
+
+    .src-tag {
+      font-size: 10px; color: var(--muted);
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 2px 7px; border-radius: 4px;
+    }
+    .prog { height: 3px; background: #333333; border-radius: 2px; margin-top: 4px; min-width: 55px; overflow: hidden; }
+    .prog-f { height: 100%; border-radius: 2px; }
+    .acts { display: flex; gap: 4px; }
+
+    /* ── EMPTY STATE ─────────────────────────────────────── */
+    .empty { text-align: center; padding: 44px 20px; color: var(--muted); }
+    .empty-ico { font-size: 28px; margin-bottom: 8px; }
+    .empty-txt { font-size: 13px; font-weight: 600; }
+    .empty-sub { font-size: 12px; margin-top: 4px; }
+
+    /* ── MODAL ───────────────────────────────────────────── */
+    .m-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,12,30,0.4);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%; max-width: 560px;
+      max-height: 92vh; overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.15);
+    }
+    .m-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; }
+
+    /* form grid */
+    .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .fg-item { display: flex; flex-direction: column; gap: 4px; }
+    .fg-item.full { grid-column: 1 / -1; }
+    .fg-item label {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted); font-weight: 700;
+    }
+    .fg-item input,
+    .fg-item select,
+    .fg-item textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 11px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.12s;
+    }
+    .fg-item input:focus,
+    .fg-item select:focus,
+    .fg-item textarea:focus { border-color: var(--accent); }
+
+    .fg-section {
+      grid-column: 1 / -1;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--accent);
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .fg-section.first { padding-top: 0; border-top: none; }
+
+    .chk-row {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 11px; cursor: pointer;
+    }
+    .chk-row input[type="checkbox"] {
+      accent-color: var(--accent);
+      width: 14px; height: 14px;
+      flex-shrink: 0; cursor: pointer;
+    }
+    .chk-row label {
+      font-size: 12px; color: var(--text);
+      font-weight: 500; cursor: pointer;
+      text-transform: none; letter-spacing: 0;
+    }
+    .m-actions {
+      display: flex; justify-content: flex-end; gap: 8px;
+      margin-top: 20px; padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── UTILS ───────────────────────────────────────────── */
+    .hidden { display: none !important; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px)  {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .fg { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── SETUP SCREEN ────────────────────────────────────── -->
+  <div id="setupScreen">
+    <div class="setup-box">
+      <div class="setup-logo"><span class="ag">AG</span> Edits</div>
+      <div class="setup-title">One-time setup needed</div>
+      <div class="setup-desc">
+        Open <code>index.html</code>, scroll to the <strong>CONFIG</strong> section at the
+        top of the <code>&lt;script&gt;</code> tag, and paste in your Supabase credentials.
+      </div>
+      <div class="setup-step">
+        <div class="step-n">1</div>
+        <div class="step-t">Go to <strong>supabase.com</strong>, create a new project, then run the <code>supabase-setup.sql</code> file in the <strong>SQL Editor</strong>.</div>
+      </div>
+      <div class="setup-step">
+        <div class="step-n">2</div>
+        <div class="step-t">In Supabase go to <strong>Project Settings → API</strong>. Copy your <strong>Project URL</strong> and <strong>anon public key</strong>.</div>
+      </div>
+      <div class="setup-step">
+        <div class="step-n">3</div>
+        <div class="step-t">In <code>index.html</code> replace <code>YOUR_SUPABASE_URL</code> and <code>YOUR_SUPABASE_ANON_KEY</code> with those values, save, and push to GitHub.</div>
+      </div>
+      <div class="setup-step">
+        <div class="step-n">4</div>
+        <div class="step-t">Connect the GitHub repo to <strong>Vercel</strong>. It auto-detects a static site — no extra config needed. Done 🎉</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADING ─────────────────────────────────────────── -->
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-txt">Loading your dashboard…</div>
+  </div>
+
+  <!-- ── TOASTS ──────────────────────────────────────────── -->
+  <div id="toasts"></div>
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <div class="header">
+    <div>
+      <div class="logo"><span class="ag">AG</span> Edits</div>
+      <div class="logo-sub">Revenue &amp; Payments Dashboard</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Client</button>
+  </div>
+
+  <!-- ── MAIN ────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Overdue alert -->
+    <div id="alertBox" class="alert hidden">
+      <div>⚠️</div>
+      <div class="alert-body">
+        <div class="alert-title" id="alertTitle"></div>
+        <div class="alert-sub"   id="alertSub"></div>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Revenue chart -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title">Monthly Revenue</div>
+          <div class="card-sub">Cash collected per month</div>
+        </div>
+        <div class="legend">
+          <span class="leg"><span class="leg-dot" style="background:#6c5ff5"></span>Revenue</span>
+          <span class="leg"><span class="leg-dot" style="background:#10b981"></span>Profit</span>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+    </div>
+
+    <!-- Payment tracker -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-title">Payment Tracker</div>
+          <div class="card-sub" id="tblSub"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab active" onclick="setFilter('all',this)">All</button>
+          <button class="tab" onclick="setFilter('overdue',this)">⚠ Overdue</button>
+          <button class="tab" onclick="setFilter('partial',this)">◑ Partial</button>
+          <button class="tab" onclick="setFilter('upcoming',this)">⏳ Upcoming</button>
+          <button class="tab" onclick="setFilter('paid',this)">✓ Paid</button>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="tblWrap"></div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- ── MODAL ───────────────────────────────────────────── -->
+  <div id="mOverlay" class="m-overlay hidden" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="m-title" id="mTitle">Add New Client</div>
+      <div class="fg">
+
+        <div class="fg-section first">Client Info</div>
+        <div class="fg-item">
+          <label>Client Name *</label>
+          <input type="text" id="f_name" placeholder="e.g. FitLife Brand" />
+        </div>
+        <div class="fg-item">
+          <label>Source</label>
+          <select id="f_source">
+            <option>Instagram DM</option>
+            <option>Referral</option>
+            <option>Cold DM</option>
+            <option>Twitter / X</option>
+            <option>LinkedIn</option>
+            <option>Website</option>
+            <option>Repeat Client</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="fg-section">Package Details</div>
+        <div class="fg-item">
+          <label>Number of Videos *</label>
+          <input type="number" id="f_videos" placeholder="e.g. 10" min="1" />
+        </div>
+        <div class="fg-item">
+          <label>Package Price ($) *</label>
+          <input type="number" id="f_price" placeholder="e.g. 1500" min="0" step="0.01" />
+        </div>
+        <div class="fg-item">
+          <label>Editor Cost ($)</label>
+          <input type="number" id="f_editorCost" placeholder="e.g. 600" min="0" step="0.01" />
+        </div>
+        <div class="fg-item">
+          <label>Delivery Deadline</label>
+          <input type="date" id="f_delivery" />
+        </div>
+
+        <div class="fg-section">Deposit (50%)</div>
+        <div class="fg-item">
+          <label>Deposit Due Date</label>
+          <input type="date" id="f_depDue" />
+        </div>
+        <div class="fg-item">
+          <label>&nbsp;</label>
+          <div class="chk-row">
+            <input type="checkbox" id="f_depPaid" onchange="syncDates()" />
+            <label for="f_depPaid">Deposit Received</label>
+          </div>
+        </div>
+        <div class="fg-item" id="depDateRow" style="display:none">
+          <label>Date Received</label>
+          <input type="date" id="f_depDate" />
+        </div>
+        <div></div>
+
+        <div class="fg-section">Final Payment (50%)</div>
+        <div class="fg-item">
+          <label>Final Payment Due</label>
+          <input type="date" id="f_finDue" />
+        </div>
+        <div class="fg-item">
+          <label>&nbsp;</label>
+          <div class="chk-row">
+            <input type="checkbox" id="f_finPaid" onchange="syncDates()" />
+            <label for="f_finPaid">Final Payment Received</label>
+          </div>
+        </div>
+        <div class="fg-item" id="finDateRow" style="display:none">
+          <label>Date Received</label>
+          <input type="date" id="f_finDate" />
+        </div>
+        <div></div>
+
+        <div class="fg-section">Other</div>
+        <div class="fg-item">
+          <label>&nbsp;</label>
+          <div class="chk-row">
+            <input type="checkbox" id="f_repeat" />
+            <label for="f_repeat">Repeat Client</label>
+          </div>
+        </div>
+        <div></div>
+        <div class="fg-item full">
+          <label>Notes</label>
+          <textarea id="f_notes" rows="2" placeholder="Any extra context…"></textarea>
+        </div>
+
+      </div><!-- /fg -->
+      <div class="m-actions">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveClient()">Save Client</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCRIPT ──────────────────────────────────────────── -->
+  <script>
+  // ══════════════════════════════════════════════════════════
+  // CONFIG  ←  Replace with your real Supabase credentials
+  // ══════════════════════════════════════════════════════════
+  const SUPABASE_URL      = 'https://yzhudxlmemtdbgpqscnd.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6aHVkeGxtZW10ZGJncHFzY25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjExODgsImV4cCI6MjA5MzIzNzE4OH0.kpXUvza8CIBEgV26do8G1k4eYf2BKDNz3sy9fJAVWUc';
+
+  // ══════════════════════════════════════════════════════════
+  // INIT SUPABASE
+  // ══════════════════════════════════════════════════════════
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ══════════════════════════════════════════════════════════
+  // STATE
+  // ══════════════════════════════════════════════════════════
+  let clients       = [];
+  let currentFilter = 'all';
+  let editingId     = null;
+  let chart         = null;
+
+  // ══════════════════════════════════════════════════════════
+  // ROW MAPPERS  (Supabase snake_case  ↔  JS camelCase)
+  // ══════════════════════════════════════════════════════════
+  function rowToClient(r) {
+    return {
+      id:               r.id,
+      name:             r.name             || '',
+      source:           r.source           || '',
+      packageVideos:    r.package_videos   || 0,
+      packagePrice:     parseFloat(r.package_price)  || 0,
+      editorCost:       parseFloat(r.editor_cost)    || 0,
+      depositPaid:      r.deposit_paid     || false,
+      depositPaidDate:  r.deposit_paid_date  || '',
+      depositDueDate:   r.deposit_due_date   || '',
+      finalPaid:        r.final_paid       || false,
+      finalPaidDate:    r.final_paid_date    || '',
+      finalDueDate:     r.final_due_date     || '',
+      deliveryDeadline: r.delivery_deadline  || '',
+      isRepeat:         r.is_repeat        || false,
+      notes:            r.notes            || '',
+    };
+  }
+
+  function clientToRow(c) {
+    const d = v => (v && v.trim()) ? v : null;
+    return {
+      name:              c.name,
+      source:            c.source,
+      package_videos:    c.packageVideos,
+      package_price:     c.packagePrice,
+      editor_cost:       c.editorCost,
+      deposit_paid:      c.depositPaid,
+      deposit_paid_date: d(c.depositPaidDate),
+      deposit_due_date:  d(c.depositDueDate),
+      final_paid:        c.finalPaid,
+      final_paid_date:   d(c.finalPaidDate),
+      final_due_date:    d(c.finalDueDate),
+      delivery_deadline: d(c.deliveryDeadline),
+      is_repeat:         c.isRepeat,
+      notes:             c.notes || '',
+    };
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // COMPUTED HELPERS
+  // ══════════════════════════════════════════════════════════
+  function getStatus(c) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (c.depositPaid && c.finalPaid) return 'paid';
+    if (c.depositPaid) {
+      return (c.finalDueDate && new Date(c.finalDueDate) < today) ? 'overdue' : 'partial';
+    }
+    return (c.depositDueDate && new Date(c.depositDueDate) < today) ? 'overdue' : 'upcoming';
+  }
+
+  function getCollected(c) {
+    const h = c.packagePrice / 2;
+    return (c.depositPaid ? h : 0) + (c.finalPaid ? h : 0);
+  }
+
+  function getOutstanding(c) { return c.packagePrice - getCollected(c); }
+
+  function getProfit(c) {
+    const col = getCollected(c);
+    if (!c.packagePrice) return 0;
+    return col - (c.editorCost * (col / c.packagePrice));
+  }
+
+  function $$(n)    { return '$' + Math.round(n).toLocaleString('en-US'); }
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    const parts = d.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(parts[1]) - 1] + ' ' + parseInt(parts[2]);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // DATABASE OPERATIONS
+  // ══════════════════════════════════════════════════════════
+  async function loadClients() {
+    const { data, error } = await db
+      .from('clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { toast(error.message, 'err'); return; }
+    clients = (data || []).map(rowToClient);
+  }
+
+  async function dbInsert(payload) {
+    const { data, error } = await db
+      .from('clients')
+      .insert([clientToRow(payload)])
+      .select()
+      .single();
+    if (error) throw error;
+    clients.unshift(rowToClient(data));
+  }
+
+  async function dbUpdate(id, payload) {
+    const { data, error } = await db
+      .from('clients')
+      .update(clientToRow(payload))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    const i = clients.findIndex(c => c.id === id);
+    if (i !== -1) clients[i] = rowToClient(data);
+  }
+
+  async function dbDelete(id) {
+    const { error } = await db.from('clients').delete().eq('id', id);
+    if (error) throw error;
+    clients = clients.filter(c => c.id !== id);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // MONTHLY CHART DATA
+  // ══════════════════════════════════════════════════════════
+  function buildMonthlyData() {
+    const map = {};
+
+    clients.forEach(c => {
+      const h  = c.packagePrice / 2;
+      const hc = c.editorCost   / 2;
+      const push = (date, rev, cost) => {
+        if (!date) return;
+        const k = date.slice(0, 7);
+        if (!map[k]) map[k] = { r: 0, co: 0 };
+        map[k].r  += rev;
+        map[k].co += cost;
+      };
+      if (c.depositPaid) push(c.depositPaidDate, h,  hc);
+      if (c.finalPaid)   push(c.finalPaidDate,   h,  hc);
+    });
+
+    // Always show last 8 months even if empty
+    const now = new Date();
+    const yms = new Set(Object.keys(map));
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      yms.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return [...yms].sort().slice(-8).map(ym => {
+      const [y, m] = ym.split('-');
+      const d = map[ym] || { r: 0, co: 0 };
+      return { label: `${MO[+m - 1]} '${y.slice(2)}`, revenue: d.r, profit: d.r - d.co };
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RENDER: KPI CARDS
+  // ══════════════════════════════════════════════════════════
+  function renderKPIs() {
+    const now  = new Date();
+    const tYM  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lYM  = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+
+    let totRev = 0, totCol = 0, totOut = 0, totEd = 0, nOD = 0, thisMo = 0, lastMo = 0;
+
+    clients.forEach(c => {
+      const h   = c.packagePrice / 2;
+      const col = getCollected(c);
+      totRev += c.packagePrice;
+      totCol += col;
+      totOut += getOutstanding(c);
+      totEd  += c.packagePrice ? c.editorCost * (col / c.packagePrice) : 0;
+      if (getStatus(c) === 'overdue') nOD++;
+      const add = (date, amt) => {
+        if (!date) return;
+        const ym = date.slice(0, 7);
+        if (ym === tYM) thisMo += amt;
+        if (ym === lYM) lastMo += amt;
+      };
+      if (c.depositPaid) add(c.depositPaidDate, h);
+      if (c.finalPaid)   add(c.finalPaidDate,   h);
+    });
+
+    const totPro = totCol - totEd;
+    const margin = totCol > 0 ? (totPro / totCol * 100) : 0;
+    const chg    = lastMo > 0 ? ((thisMo - lastMo) / lastMo * 100) : null;
+
+    const trend = chg !== null
+      ? `<div class="kpi-note ${chg >= 0 ? 'c-green' : 'c-red'}">${chg >= 0 ? '↑' : '↓'} ${Math.abs(chg).toFixed(1)}% vs last month</div>`
+      : `<div class="kpi-note c-muted">No prior month data</div>`;
+
+    document.getElementById('kpiGrid').innerHTML = `
+      <div class="kpi">
+        <div class="kpi-lbl">This Month</div>
+        <div class="kpi-val c-accent">${$$(thisMo)}</div>
+        ${trend}
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Total Collected</div>
+        <div class="kpi-val">${$$(totCol)}</div>
+        <div class="kpi-note c-muted">of ${$$(totRev)} contracted</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Outstanding</div>
+        <div class="kpi-val ${totOut > 0 ? 'c-orange' : 'c-green'}">${$$(totOut)}</div>
+        <div class="kpi-note ${nOD > 0 ? 'c-red' : 'c-muted'}">${nOD > 0 ? `⚠ ${nOD} overdue` : 'All on track'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Net Profit</div>
+        <div class="kpi-val c-green">${$$(totPro)}</div>
+        <div class="kpi-note c-muted">After editor costs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Profit Margin</div>
+        <div class="kpi-val ${margin >= 50 ? 'c-green' : margin >= 30 ? 'c-blue' : 'c-orange'}">${margin.toFixed(1)}%</div>
+        <div class="kpi-note c-muted">Revenue after costs</div>
+      </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RENDER: CHART
+  // ══════════════════════════════════════════════════════════
+  function renderChart() {
+    const data = buildMonthlyData();
+    const ctx  = document.getElementById('revenueChart').getContext('2d');
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [
+          {
+            label: 'Revenue',
+            data:  data.map(d => d.revenue),
+            backgroundColor:      'rgba(108,95,245,0.75)',
+            hoverBackgroundColor: '#6c5ff5',
+            borderRadius:  5,
+            borderSkipped: false,
+            categoryPercentage: 0.7,
+            barPercentage:      0.5,
+          },
+          {
+            label: 'Profit',
+            data:  data.map(d => d.profit),
+            backgroundColor:      'rgba(16,185,129,0.5)',
+            hoverBackgroundColor: '#10b981',
+            borderRadius:  5,
+            borderSkipped: false,
+            categoryPercentage: 0.7,
+            barPercentage:      0.5,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#111111',
+            borderColor: '#2c2c2c',
+            borderWidth: 1,
+            titleColor: '#f0f0f0',
+            bodyColor:  '#888888',
+            padding: 12,
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid:   { display: false },
+            border: { display: false },
+            ticks:  { color: '#6b7494', font: { size: 11 } },
+          },
+          y: {
+            grid:   { color: '#2c2c2c' },
+            border: { display: false },
+            ticks:  {
+              color: '#6b7494', font: { size: 11 },
+              callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v),
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RENDER: OVERDUE ALERT
+  // ══════════════════════════════════════════════════════════
+  function renderAlert() {
+    const od  = clients.filter(c => getStatus(c) === 'overdue');
+    const box = document.getElementById('alertBox');
+    if (!od.length) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    document.getElementById('alertTitle').textContent =
+      `${od.length} payment${od.length > 1 ? 's' : ''} overdue — follow up needed`;
+    document.getElementById('alertSub').textContent =
+      od.map(c => `${c.name} (${$$(getOutstanding(c))} outstanding)`).join('  ·  ');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RENDER: TABLE
+  // ══════════════════════════════════════════════════════════
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  }
+
+  function renderTable() {
+    const list = currentFilter === 'all'
+      ? clients
+      : clients.filter(c => getStatus(c) === currentFilter);
+
+    document.getElementById('tblSub').textContent =
+      `${list.length} record${list.length !== 1 ? 's' : ''}`;
+
+    const wrap = document.getElementById('tblWrap');
+
+    if (!list.length) {
+      wrap.innerHTML = `
+        <div class="empty">
+          <div class="empty-ico">📋</div>
+          <div class="empty-txt">${clients.length === 0 ? 'No clients yet.' : 'No clients in this category.'}</div>
+          <div class="empty-sub">${clients.length === 0 ? 'Add your first client to get started.' : 'Try a different filter.'}</div>
+        </div>`;
+      return;
+    }
+
+    const bdg = {
+      paid:     ['b-paid',     '✓ Paid'],
+      partial:  ['b-partial',  '◑ Partial'],
+      overdue:  ['b-overdue',  '⚠ Overdue'],
+      upcoming: ['b-upcoming', '⏳ Upcoming'],
+    };
+
+    const rows = list.map(c => {
+      const st  = getStatus(c);
+      const col = getCollected(c);
+      const out = getOutstanding(c);
+      const pro = Math.max(0, getProfit(c));
+      const pct = c.packagePrice ? Math.round(col / c.packagePrice * 100) : 0;
+      const [bc, bl] = bdg[st];
+      const barCol = st === 'overdue' ? '#ef4444' : st === 'paid' ? '#10b981' : '#3b82f6';
+
+      return `<tr>
+        <td style="font-weight:700">
+          ${c.name}${c.isRepeat ? '<span class="badge b-repeat">↩ Repeat</span>' : ''}
+        </td>
+        <td><span class="src-tag">${c.source}</span></td>
+        <td style="color:var(--muted)">${c.packageVideos} vids</td>
+        <td>${$$(c.packagePrice)}</td>
+        <td style="color:var(--muted)">${$$(c.editorCost)}</td>
+        <td>
+          ${$$(col)}
+          <div class="prog"><div class="prog-f" style="width:${pct}%;background:${barCol}"></div></div>
+        </td>
+        <td style="color:${out > 0 ? 'var(--orange)' : 'var(--muted)'};font-weight:${out > 0 ? 700 : 400}">
+          ${out > 0 ? $$(out) : '—'}
+        </td>
+        <td style="color:var(--green);font-weight:700">${$$(pro)}</td>
+        <td><span class="badge ${bc}">${bl}</span></td>
+        <td style="color:var(--muted);font-size:11px">${fmtDate(c.finalDueDate)}</td>
+        <td>
+          <div class="acts">
+            <button class="btn btn-ghost btn-sm"   onclick="openModal(${c.id})">Edit</button>
+            <button class="btn btn-danger btn-sm"  onclick="deleteClient(${c.id})">Del</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Client</th><th>Source</th><th>Package</th><th>Price</th>
+            <th>Editor Cost</th><th>Collected</th><th>Outstanding</th>
+            <th>Profit</th><th>Status</th><th>Final Due</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // RENDER ALL
+  // ══════════════════════════════════════════════════════════
+  function renderAll() {
+    renderAlert();
+    renderKPIs();
+    renderChart();
+    renderTable();
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // MODAL
+  // ══════════════════════════════════════════════════════════
+  function openModal(id = null) {
+    editingId = id;
+    document.getElementById('mTitle').textContent = id ? 'Edit Client' : 'Add New Client';
+    const c = id ? clients.find(x => x.id === id) : null;
+
+    const sv = (sel, val) => { const el = document.getElementById(sel); if (el) el.value   = val ?? ''; };
+    const sk = (sel, val) => { const el = document.getElementById(sel); if (el) el.checked = !!val; };
+
+    sv('f_name',       c?.name);
+    sv('f_source',     c?.source || 'Instagram DM');
+    sv('f_videos',     c?.packageVideos ?? '');
+    sv('f_price',      c?.packagePrice  ?? '');
+    sv('f_editorCost', c?.editorCost    ?? '');
+    sv('f_delivery',   c?.deliveryDeadline);
+    sv('f_depDue',     c?.depositDueDate);
+    sk('f_depPaid',    c?.depositPaid);
+    sv('f_depDate',    c?.depositPaidDate);
+    sv('f_finDue',     c?.finalDueDate);
+    sk('f_finPaid',    c?.finalPaid);
+    sv('f_finDate',    c?.finalPaidDate);
+    sk('f_repeat',     c?.isRepeat);
+    sv('f_notes',      c?.notes);
+
+    syncDates();
+    document.getElementById('mOverlay').classList.remove('hidden');
+    document.getElementById('f_name').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('mOverlay').classList.add('hidden');
+    editingId = null;
+  }
+
+  function syncDates() {
+    document.getElementById('depDateRow').style.display =
+      document.getElementById('f_depPaid').checked ? 'flex' : 'none';
+    document.getElementById('finDateRow').style.display =
+      document.getElementById('f_finPaid').checked ? 'flex' : 'none';
+  }
+
+  async function saveClient() {
+    const name   = document.getElementById('f_name').value.trim();
+    const videos = parseInt(document.getElementById('f_videos').value);
+    const price  = parseFloat(document.getElementById('f_price').value);
+
+    if (!name || !videos || !price) {
+      toast('Please fill in Client Name, # of Videos, and Package Price.', 'err');
+      return;
+    }
+
+    const g = id => document.getElementById(id);
+    const payload = {
+      name,
+      source:           g('f_source').value,
+      packageVideos:    videos,
+      packagePrice:     price,
+      editorCost:       parseFloat(g('f_editorCost').value) || 0,
+      deliveryDeadline: g('f_delivery').value,
+      depositDueDate:   g('f_depDue').value,
+      depositPaid:      g('f_depPaid').checked,
+      depositPaidDate:  g('f_depDate').value,
+      finalDueDate:     g('f_finDue').value,
+      finalPaid:        g('f_finPaid').checked,
+      finalPaidDate:    g('f_finDate').value,
+      isRepeat:         g('f_repeat').checked,
+      notes:            g('f_notes').value.trim(),
+    };
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled    = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      if (editingId) await dbUpdate(editingId, payload);
+      else           await dbInsert(payload);
+      closeModal();
+      renderAll();
+      toast(editingId ? 'Client updated.' : 'Client added!');
+    } catch (e) {
+      toast('Error: ' + e.message, 'err');
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Save Client';
+    }
+  }
+
+  async function deleteClient(id) {
+    const c = clients.find(x => x.id === id);
+    if (!confirm(`Delete "${c?.name}"? This cannot be undone.`)) return;
+    try {
+      await dbDelete(id);
+      renderAll();
+      toast('Client deleted.');
+    } catch (e) {
+      toast('Error: ' + e.message, 'err');
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // TOAST
+  // ══════════════════════════════════════════════════════════
+  function toast(msg, type = 'ok') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // BOOTSTRAP
+  // ══════════════════════════════════════════════════════════
+  async function init() {
+    if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+      document.getElementById('setupScreen').style.display = 'flex';
+      return;
+    }
+    const lo = document.getElementById('loadingOverlay');
+    lo.style.display = 'flex';
+    await loadClients();
+    lo.style.display = 'none';
+    renderAll();
+  }
+
+  init();
+  </script>
+</body>
+</html>Payment status (Paid / Partially Paid / Overdue / Upcoming)
 Deposit due date + final payment due date
 Things I'd also suggest tracking that'll be valuable:
 
